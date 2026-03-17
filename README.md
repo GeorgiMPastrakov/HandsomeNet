@@ -38,9 +38,13 @@ Detailed dataset placement and required files are documented in [docs/dataset_se
 
 This repo uses:
 
+- Python `3.11+`
 - Python packaging via `pyproject.toml`
 - `pytest` for tests
 - `ruff` for linting and formatting
 
 The authoritative v1 specification lives in [docs/specs/handsomenet_v1_locked_spec.md](/Users/georgipastrakov/Personal%20projects/HandsomeNet/docs/specs/handsomenet_v1_locked_spec.md).
 
+## Local environment
+
+Use a local virtual environment with Python `3.11+`. The repository includes a `.python-version` file set to `3.11` so the expected interpreter version stays explicit.
