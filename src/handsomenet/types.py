@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -24,7 +25,8 @@ class GeometryMetadata:
 class SampleTargets:
     """Projected and normalized target coordinates for one sample."""
 
-    projected_2d_pixels: np.ndarray
+    projected_original_pixels: np.ndarray
+    projected_input_pixels: np.ndarray
     normalized_2d: np.ndarray
 
 
@@ -36,4 +38,4 @@ class DatasetSample:
     targets: SampleTargets
     geometry: GeometryMetadata
     sample_id: str
-
+    image_path: Path

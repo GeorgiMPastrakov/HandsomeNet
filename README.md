@@ -14,7 +14,15 @@ This repository is set up to support the locked v1 scope:
 
 ## Current status
 
-The repository foundation is ready for the dataset integration checkpoint. Model and training modules are scaffolded but intentionally not implemented yet beyond minimal interfaces and placeholders.
+The FreiHAND dataset integration checkpoint is now implemented:
+
+- canonical FreiHAND local layout under `data/raw/freihand/`
+- 3D-to-2D projection using `training_xyz.json` and `training_K.json`
+- geometry metadata for exact inverse mapping
+- normalized `(21, 2)` target generation
+- verification script for visual overlays and inversion checks
+
+Model and training work remain downstream of this verified data contract.
 
 ## Repository layout
 
@@ -48,3 +56,11 @@ The authoritative v1 specification lives in [docs/specs/handsomenet_v1_locked_sp
 ## Local environment
 
 Use a local virtual environment with Python `3.11+`. The repository includes a `.python-version` file set to `3.11` so the expected interpreter version stays explicit.
+
+## Dataset verification
+
+Run the FreiHAND dataset checkpoint with:
+
+- `.venv/bin/python scripts/verify_freihand.py`
+
+This writes sample overlay images under `artifacts/runs/freihand_verification/` and reports the maximum inversion error for the selected samples.
