@@ -1,0 +1,18 @@
+project:
+  name: HandsomeNet
+  task: single-image 2d hand pose estimation
+  dataset: FreiHAND
+  input_size: [224, 224]
+  output_shape: [21, 2]
+
+paths:
+  data_dir: data/raw/freihand
+  processed_dir: data/processed
+  artifacts_dir: artifacts
+
+training:
+  seed: 42
+  batch_size: 32
+  learning_rate: 0.001
+  num_workers: 4
+

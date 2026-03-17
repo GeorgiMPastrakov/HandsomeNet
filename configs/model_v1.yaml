@@ -1,0 +1,12 @@
+model:
+  name: HandsomeNet
+  input_channels: 3
+  input_size: [224, 224]
+  backbone_output_channels: 192
+  backbone_output_grid: [14, 14]
+  token_dim: 128
+  num_joints: 21
+  graph_layers: 2
+  coordinate_head_hidden_dim: 64
+  bounded_output: true
+
