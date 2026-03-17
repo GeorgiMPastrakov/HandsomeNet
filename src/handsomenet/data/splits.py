@@ -24,6 +24,8 @@ def build_freihand_split(
     val_fraction: float = 0.1,
     seed: int = 42,
     num_variants: int = NUM_IMAGE_VARIANTS_PER_SAMPLE,
+    limit_train_unique: int | None = None,
+    limit_val_unique: int | None = None,
 ) -> DatasetSplit:
     """Build a deterministic split by unique annotation ID."""
 
@@ -41,6 +43,16 @@ def build_freihand_split(
     num_val_unique = max(1, int(round(num_unique_samples * val_fraction)))
     val_unique_ids = np.sort(unique_ids[:num_val_unique]).tolist()
     train_unique_ids = np.sort(unique_ids[num_val_unique:]).tolist()
+
+    if limit_train_unique is not None:
+        if limit_train_unique <= 0:
+            raise ValueError("limit_train_unique must be positive when provided.")
+        train_unique_ids = train_unique_ids[:limit_train_unique]
+
+    if limit_val_unique is not None:
+        if limit_val_unique <= 0:
+            raise ValueError("limit_val_unique must be positive when provided.")
+        val_unique_ids = val_unique_ids[:limit_val_unique]
 
     return DatasetSplit(
         train_indices=_expand_unique_ids(train_unique_ids, num_unique_samples, num_variants),

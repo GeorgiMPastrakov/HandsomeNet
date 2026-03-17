@@ -73,3 +73,18 @@ def test_freihand_split_keeps_variants_together() -> None:
 def test_freihand_image_variant_mapping() -> None:
     assert image_index_to_annotation_index(32561, 32560) == 1
     assert image_index_to_variant_index(32561, 32560) == 1
+
+
+def test_freihand_split_limits_preserve_variant_expansion() -> None:
+    split = build_freihand_split(
+        num_unique_samples=100,
+        val_fraction=0.1,
+        seed=42,
+        limit_train_unique=8,
+        limit_val_unique=2,
+    )
+
+    assert len(split.train_unique_ids) == 8
+    assert len(split.val_unique_ids) == 2
+    assert len(split.train_indices) == 8 * 4
+    assert len(split.val_indices) == 2 * 4

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +33,7 @@ class TrainerConfig:
     checkpoint_dir: Path = Path("artifacts/checkpoints")
     max_train_batches: int | None = None
     max_val_batches: int | None = None
+    stop_train_pixel_error: float | None = None
 
 
 @dataclass(frozen=True)
@@ -62,14 +64,15 @@ class Trainer:
         train_loader: DataLoader[TensorBatch],
         val_loader: DataLoader[TensorBatch],
         num_epochs: int,
+        start_epoch: int = 0,
     ) -> list[dict[str, float]]:
-        history: list[dict[str, float]] = []
-        for epoch in range(1, num_epochs + 1):
+        history = self.read_history()
+        for epoch in range(start_epoch + 1, start_epoch + num_epochs + 1):
             train_metrics = self.run_epoch(train_loader, training=True)
             val_metrics = self.run_epoch(val_loader, training=False)
-            self.save_checkpoint(epoch)
+            checkpoint_path = self.save_checkpoint(epoch)
             self.visualize_predictions(val_loader, epoch)
-            history.append(
+            epoch_history = (
                 {
                     "epoch": float(epoch),
                     "train_loss": train_metrics.loss,
@@ -78,6 +81,15 @@ class Trainer:
                     "val_pixel_error": val_metrics.pixel_error,
                 }
             )
+            history.append(epoch_history)
+            self.write_history(history)
+            self.write_latest_checkpoint(checkpoint_path)
+
+            if (
+                self.config.stop_train_pixel_error is not None
+                and train_metrics.pixel_error <= self.config.stop_train_pixel_error
+            ):
+                break
         return history
 
     def run_epoch(self, loader: DataLoader[TensorBatch], training: bool) -> EpochMetrics:
@@ -141,6 +153,29 @@ class Trainer:
             checkpoint_path,
         )
         return checkpoint_path
+
+    def write_history(self, history: list[dict[str, float]]) -> Path:
+        history_path = self.config.output_dir / "history.json"
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        with history_path.open("w") as handle:
+            json.dump(history, handle, indent=2)
+        return history_path
+
+    def read_history(self) -> list[dict[str, float]]:
+        history_path = self.config.output_dir / "history.json"
+        if not history_path.exists():
+            return []
+        with history_path.open() as handle:
+            payload = json.load(handle)
+        if not isinstance(payload, list):
+            raise TypeError("Expected history.json to contain a list of epoch records.")
+        return payload
+
+    def write_latest_checkpoint(self, checkpoint_path: Path) -> Path:
+        latest_checkpoint_path = self.config.output_dir / "latest_checkpoint.txt"
+        latest_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        latest_checkpoint_path.write_text(str(checkpoint_path))
+        return latest_checkpoint_path
 
     def load_checkpoint(self, checkpoint_path: Path) -> int:
         checkpoint = torch.load(checkpoint_path, map_location=self.device)

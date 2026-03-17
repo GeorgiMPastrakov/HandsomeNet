@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import torch
@@ -5,6 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from handsomenet.data.tensor_dataset import collate_tensor_samples
 from handsomenet.training.metrics import mean_2d_pixel_error
+from handsomenet.training.runtime import resolve_device
 from handsomenet.training.trainer import Trainer, TrainerConfig
 from handsomenet.types import GeometryMetadata, TensorBatch, TensorSample
 
@@ -59,14 +61,14 @@ def test_collate_tensor_samples_returns_expected_batch() -> None:
     assert batch.image_variant_indices.shape == (2,)
 
 
-def test_trainer_checkpoint_round_trip_and_fit() -> None:
+def test_trainer_checkpoint_round_trip_and_fit(tmp_path: Path) -> None:
     dataset = DummyTensorDataset()
     loader = DataLoader(dataset, batch_size=4, shuffle=False, collate_fn=collate_tensor_samples)
     config = TrainerConfig(
         model_name="baseline",
         device="cpu",
-        output_dir=Path("artifacts/runs/test_trainer"),
-        checkpoint_dir=Path("artifacts/checkpoints/test_trainer"),
+        output_dir=tmp_path / "runs",
+        checkpoint_dir=tmp_path / "checkpoints",
         max_train_batches=1,
         max_val_batches=1,
     )
@@ -81,3 +83,29 @@ def test_trainer_checkpoint_round_trip_and_fit() -> None:
 
     loaded_epoch = trainer.load_checkpoint(checkpoint_path)
     assert loaded_epoch == 1
+
+    history_path = config.output_dir / "history.json"
+    latest_checkpoint_path = config.output_dir / "latest_checkpoint.txt"
+    assert history_path.exists()
+    assert latest_checkpoint_path.exists()
+
+    persisted_history = json.loads(history_path.read_text())
+    assert len(persisted_history) == 1
+    assert persisted_history[0]["epoch"] == 1.0
+    assert latest_checkpoint_path.read_text().strip() == str(checkpoint_path)
+
+    resumed_history = trainer.fit(
+        train_loader=loader,
+        val_loader=loader,
+        num_epochs=1,
+        start_epoch=loaded_epoch,
+    )
+    assert len(resumed_history) == 2
+    assert resumed_history[-1]["epoch"] == 2.0
+
+
+def test_resolve_device_prefers_available_backends() -> None:
+    resolved = resolve_device("auto")
+
+    assert resolved in {"mps", "cuda", "cpu"}
+    assert resolve_device("cpu") == "cpu"
