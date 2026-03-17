@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit-train-unique", type=int, default=None)
     parser.add_argument("--limit-val-unique", type=int, default=None)
     parser.add_argument("--resume-checkpoint", type=Path, default=None)
+    parser.add_argument("--run-name", type=str, default=None)
     parser.add_argument("--stop-train-pixel-error", type=float, default=None)
     return parser.parse_args()
 
@@ -61,7 +62,7 @@ def main() -> None:
     )
 
     device = resolve_device(args.device)
-    run_name = resolve_run_name(
+    run_name = args.run_name or resolve_run_name(
         model_name=args.model,
         limit_train_unique=args.limit_train_unique,
         limit_val_unique=args.limit_val_unique,
