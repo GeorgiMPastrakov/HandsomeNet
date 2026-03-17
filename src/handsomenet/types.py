@@ -53,3 +53,16 @@ class TensorSample:
     annotation_index: int
     image_variant_index: int
     image_path: Path
+
+
+@dataclass(frozen=True)
+class TensorBatch:
+    """Batch of tensorized samples for training and validation."""
+
+    images: torch.Tensor
+    targets: torch.Tensor
+    geometries: tuple[GeometryMetadata, ...]
+    sample_ids: tuple[str, ...]
+    annotation_indices: torch.Tensor
+    image_variant_indices: torch.Tensor
+    image_paths: tuple[Path, ...]

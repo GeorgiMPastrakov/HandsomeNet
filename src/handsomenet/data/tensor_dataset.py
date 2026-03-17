@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 from handsomenet.data.freihand import FreiHANDDataset
 from handsomenet.data.splits import image_index_to_annotation_index, image_index_to_variant_index
-from handsomenet.types import TensorSample
+from handsomenet.types import TensorBatch, TensorSample
 
 
 class FreiHANDTensorDataset(Dataset[TensorSample]):
@@ -41,3 +41,21 @@ class FreiHANDTensorDataset(Dataset[TensorSample]):
             image_variant_index=image_variant_index,
             image_path=raw_sample.image_path,
         )
+
+
+def collate_tensor_samples(samples: list[TensorSample]) -> TensorBatch:
+    """Collate tensor samples into a batch with preserved metadata."""
+
+    return TensorBatch(
+        images=torch.stack([sample.image for sample in samples], dim=0),
+        targets=torch.stack([sample.targets for sample in samples], dim=0),
+        geometries=tuple(sample.geometry for sample in samples),
+        sample_ids=tuple(sample.sample_id for sample in samples),
+        annotation_indices=torch.tensor(
+            [sample.annotation_index for sample in samples], dtype=torch.long
+        ),
+        image_variant_indices=torch.tensor(
+            [sample.image_variant_index for sample in samples], dtype=torch.long
+        ),
+        image_paths=tuple(sample.image_path for sample in samples),
+    )
