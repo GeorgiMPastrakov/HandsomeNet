@@ -29,6 +29,7 @@ class BaselineHandPoseModel(nn.Module):
             nn.ReLU(inplace=True),
         )
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.joint_embeddings = nn.Parameter(torch.randn(1, NUM_JOINTS, hidden_dim) * 0.02)
         self.coordinate_head = CoordinateHead(
             input_dim=hidden_dim,
             hidden_dim=hidden_dim,
@@ -40,4 +41,5 @@ class BaselineHandPoseModel(nn.Module):
         features = self.encoder(images)
         pooled = self.pool(features).flatten(start_dim=1)
         token_like_features = pooled.unsqueeze(1).expand(-1, NUM_JOINTS, -1)
+        token_like_features = token_like_features + self.joint_embeddings
         return self.coordinate_head(token_like_features)
