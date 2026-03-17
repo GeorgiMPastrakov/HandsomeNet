@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import torch
 
 
 @dataclass(frozen=True)
@@ -38,4 +39,17 @@ class DatasetSample:
     targets: SampleTargets
     geometry: GeometryMetadata
     sample_id: str
+    image_path: Path
+
+
+@dataclass(frozen=True)
+class TensorSample:
+    """Training-facing tensorized sample."""
+
+    image: torch.Tensor
+    targets: torch.Tensor
+    geometry: GeometryMetadata
+    sample_id: str
+    annotation_index: int
+    image_variant_index: int
     image_path: Path

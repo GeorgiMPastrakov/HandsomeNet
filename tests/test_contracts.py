@@ -11,6 +11,11 @@ from handsomenet.data.geometry import (
     normalize_points,
     project_xyz_with_intrinsics,
 )
+from handsomenet.data.splits import (
+    build_freihand_split,
+    image_index_to_annotation_index,
+    image_index_to_variant_index,
+)
 
 
 def test_expected_freihand_paths() -> None:
@@ -50,3 +55,21 @@ def test_geometry_round_trip_for_points() -> None:
     restored_original = invert_geometry_on_points(restored_input, geometry)
 
     np.testing.assert_allclose(restored_original, points, atol=1e-5)
+
+
+def test_freihand_split_keeps_variants_together() -> None:
+    split = build_freihand_split(num_unique_samples=10, val_fraction=0.2, seed=7)
+
+    train_annotations = {
+        image_index_to_annotation_index(index, 10) for index in split.train_indices
+    }
+    val_annotations = {image_index_to_annotation_index(index, 10) for index in split.val_indices}
+
+    assert train_annotations.isdisjoint(val_annotations)
+    assert len(split.train_indices) == len(split.train_unique_ids) * 4
+    assert len(split.val_indices) == len(split.val_unique_ids) * 4
+
+
+def test_freihand_image_variant_mapping() -> None:
+    assert image_index_to_annotation_index(32561, 32560) == 1
+    assert image_index_to_variant_index(32561, 32560) == 1

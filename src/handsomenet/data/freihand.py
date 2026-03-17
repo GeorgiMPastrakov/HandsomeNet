@@ -52,7 +52,7 @@ class FreiHANDDataset:
 
     def __getitem__(self, index: int) -> DatasetSample:
         image_path = self.image_paths[index]
-        annotation_index = index % self.num_unique_samples
+        annotation_index = int(image_path.stem) % self.num_unique_samples
 
         with Image.open(image_path) as image:
             image = image.convert("RGB")
