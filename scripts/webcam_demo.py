@@ -10,9 +10,11 @@ import cv2
 
 from handsomenet.inference.webcam import (
     FpsTracker,
+    HandRoiTracker,
     LandmarkSmoother,
     annotate_frame,
     draw_landmarks,
+    draw_roi_box,
     load_checkpoint_model,
     predict_frame_landmarks,
     prepare_frame,
@@ -29,6 +31,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-name", type=str, default="HandsomeNet Webcam Demo")
     parser.add_argument("--save-dir", type=Path, default=Path("artifacts/webcam"))
     parser.add_argument("--smoothing-alpha", type=float, default=0.65)
+    parser.add_argument("--detector-confidence", type=float, default=0.5)
+    parser.add_argument("--roi-expansion", type=float, default=1.45)
+    parser.add_argument("--tracker-grace-frames", type=int, default=8)
+    parser.add_argument("--show-roi", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--mirror", action=argparse.BooleanOptionalAction, default=True)
     return parser.parse_args()
 
@@ -40,6 +46,11 @@ def main() -> None:
         model_name=args.model,
         checkpoint_path=args.checkpoint,
         device=device,
+    )
+    tracker = HandRoiTracker(
+        detection_confidence=args.detector_confidence,
+        roi_expansion=args.roi_expansion,
+        grace_frames=args.tracker_grace_frames,
     )
 
     capture = cv2.VideoCapture(args.camera_index)
@@ -59,13 +70,44 @@ def main() -> None:
             if args.mirror:
                 frame_bgr = cv2.flip(frame_bgr, 1)
 
-            prepared_frame = prepare_frame(frame_bgr, device=device)
-            landmarks_xy = predict_frame_landmarks(model, prepared_frame)
-            smoothed_landmarks_xy = smoother.update(landmarks_xy)
-
+            tracker_result = tracker.detect(frame_bgr)
             fps = fps_tracker.tick()
-            rendered_frame = draw_landmarks(frame_bgr, smoothed_landmarks_xy)
-            rendered_frame = annotate_frame(rendered_frame, args.model, device, fps)
+            rendered_frame = frame_bgr.copy()
+            status_text = "no hand detected"
+            if tracker_result.roi_box is not None:
+                prepared_frame = prepare_frame(
+                    frame_bgr,
+                    device=device,
+                    roi_box=tracker_result.roi_box,
+                )
+                landmarks_xy = predict_frame_landmarks(model, prepared_frame)
+                smoothed_landmarks_xy = smoother.update(landmarks_xy)
+                rendered_frame = draw_landmarks(rendered_frame, smoothed_landmarks_xy)
+                if tracker_result.detected_this_frame:
+                    status_text = "hand detected"
+                elif tracker_result.using_grace_window:
+                    status_text = "reacquiring hand"
+                if args.show_roi:
+                    roi_color = (
+                        (0, 255, 255)
+                        if tracker_result.detected_this_frame
+                        else (0, 140, 255)
+                    )
+                    rendered_frame = draw_roi_box(
+                        rendered_frame,
+                        tracker_result.roi_box,
+                        color=roi_color,
+                    )
+            else:
+                smoother.reset()
+
+            rendered_frame = annotate_frame(
+                rendered_frame,
+                args.model,
+                device,
+                fps,
+                status_text,
+            )
             cv2.imshow(args.window_name, rendered_frame)
 
             key = cv2.waitKey(1) & 0xFF
@@ -77,6 +119,7 @@ def main() -> None:
                 cv2.imwrite(str(output_path), rendered_frame)
                 save_index += 1
     finally:
+        tracker.close()
         capture.release()
         cv2.destroyAllWindows()
 

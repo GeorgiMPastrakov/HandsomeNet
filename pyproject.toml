@@ -13,6 +13,7 @@ authors = [
   { name = "Georgi Pastrakov" }
 ]
 dependencies = [
+  "mediapipe>=0.10.14",
   "numpy>=2.0",
   "opencv-python>=4.10",
   "pillow>=11.0",

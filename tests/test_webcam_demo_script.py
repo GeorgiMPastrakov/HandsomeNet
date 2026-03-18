@@ -13,3 +13,5 @@ def test_webcam_demo_script_help() -> None:
     assert completed.returncode == 0
     assert "--camera-index" in completed.stdout
     assert "--checkpoint" in completed.stdout
+    assert "--roi-expansion" in completed.stdout
+    assert "--tracker-grace-frames" in completed.stdout
