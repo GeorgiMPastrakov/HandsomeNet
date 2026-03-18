@@ -92,6 +92,20 @@ class Trainer:
                 break
         return history
 
+    def evaluate(
+        self,
+        loader: DataLoader[TensorBatch],
+        split_name: str = "val",
+    ) -> dict[str, float]:
+        metrics = self.run_epoch(loader, training=False)
+        self.visualize_predictions(loader, split_name)
+        payload = {
+            "loss": metrics.loss,
+            "pixel_error": metrics.pixel_error,
+        }
+        self.write_evaluation_metrics(payload, split_name)
+        return payload
+
     def run_epoch(self, loader: DataLoader[TensorBatch], training: bool) -> EpochMetrics:
         self.model.train(training)
         total_loss = 0.0
@@ -177,13 +191,20 @@ class Trainer:
         latest_checkpoint_path.write_text(str(checkpoint_path))
         return latest_checkpoint_path
 
+    def write_evaluation_metrics(self, metrics: dict[str, float], split_name: str) -> Path:
+        metrics_path = self.config.output_dir / f"{split_name}_metrics.json"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        with metrics_path.open("w") as handle:
+            json.dump(metrics, handle, indent=2)
+        return metrics_path
+
     def load_checkpoint(self, checkpoint_path: Path) -> int:
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         return int(checkpoint["epoch"])
 
-    def visualize_predictions(self, loader: DataLoader[TensorBatch], epoch: int) -> None:
+    def visualize_predictions(self, loader: DataLoader[TensorBatch], epoch: int | str) -> None:
         self.model.eval()
         batch = next(iter(loader))
         images = batch.images.to(self.device)

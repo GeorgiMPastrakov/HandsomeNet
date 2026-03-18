@@ -104,6 +104,46 @@ def test_trainer_checkpoint_round_trip_and_fit(tmp_path: Path) -> None:
     assert resumed_history[-1]["epoch"] == 2.0
 
 
+def test_trainer_evaluate_writes_metrics_and_visualizations(tmp_path: Path) -> None:
+    dataset = DummyTensorDataset()
+    loader = DataLoader(dataset, batch_size=4, shuffle=False, collate_fn=collate_tensor_samples)
+    config = TrainerConfig(
+        model_name="baseline",
+        device="cpu",
+        output_dir=tmp_path / "eval_runs",
+        checkpoint_dir=tmp_path / "checkpoints",
+        max_train_batches=1,
+        max_val_batches=1,
+    )
+    trainer = Trainer(config)
+    trainer.fit(train_loader=loader, val_loader=loader, num_epochs=1)
+
+    checkpoint_path = config.checkpoint_dir / "baseline_epoch_1.pt"
+    eval_output_dir = tmp_path / "eval_only"
+    eval_trainer = Trainer(
+        TrainerConfig(
+            model_name="baseline",
+            device="cpu",
+            output_dir=eval_output_dir,
+            checkpoint_dir=tmp_path / "unused_checkpoints",
+            max_val_batches=1,
+        )
+    )
+    loaded_epoch = eval_trainer.load_checkpoint(checkpoint_path)
+    assert loaded_epoch == 1
+
+    metrics = eval_trainer.evaluate(loader, split_name="val")
+
+    assert metrics["loss"] >= 0.0
+    assert metrics["pixel_error"] >= 0.0
+    metrics_path = eval_output_dir / "val_metrics.json"
+    assert metrics_path.exists()
+    persisted_metrics = json.loads(metrics_path.read_text())
+    assert persisted_metrics == metrics
+    visualization_path = eval_output_dir / "visualizations" / "epoch_val_sample_0.jpg"
+    assert visualization_path.exists()
+
+
 def test_resolve_device_prefers_available_backends() -> None:
     resolved = resolve_device("auto")
 
