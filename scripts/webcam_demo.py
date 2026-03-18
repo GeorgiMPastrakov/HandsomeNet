@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import platform
 from pathlib import Path
 
 import cv2
@@ -43,7 +44,7 @@ def main() -> None:
 
     capture = cv2.VideoCapture(args.camera_index)
     if not capture.isOpened():
-        raise RuntimeError(f"Could not open camera index {args.camera_index}.")
+        raise RuntimeError(_camera_open_error(args.camera_index))
 
     fps_tracker = FpsTracker()
     smoother = LandmarkSmoother(alpha=args.smoothing_alpha)
@@ -78,6 +79,18 @@ def main() -> None:
     finally:
         capture.release()
         cv2.destroyAllWindows()
+
+def _camera_open_error(camera_index: int) -> str:
+    message = f"Could not open camera index {camera_index}."
+    if platform.system() == "Darwin":
+        message += (
+            " macOS camera access is likely blocked for the app hosting Python. "
+            "Open System Settings -> Privacy & Security -> Camera and enable access for "
+            "Terminal, iTerm, Visual Studio Code, or Codex, depending on where "
+            "you ran the command. "
+            "Then fully restart that app and rerun `scripts/webcam_demo.py`."
+        )
+    return message
 
 
 if __name__ == "__main__":
